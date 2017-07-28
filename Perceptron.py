@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-理论知识：https://www.zybuluo.com/hanbingtao/note/433855
+理论知识：感知器
+https://www.zybuluo.com/hanbingtao/note/433855
 """
 
 class Perceptron(object):
