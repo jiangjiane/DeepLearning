@@ -14,4 +14,41 @@ class Node(object):
         :param layer_index:节点所属层的编号
         :param node_index: 节点的编号
         '''
-        pass
+        self.layer_index = layer_index
+        self.node_index = node_index
+        self.downstream = []
+        self.upstream = []
+        self.output = 0
+        self.delta = 0
+    def set_output(self, output):
+        '''
+        设置节点的输出值.如果节点属于输入层将会用到这个函数
+        :param output: 需要设置的值
+        :return:
+        '''
+        self.output = output
+
+    def append_downstream_connection(self, conn):
+        '''
+        添加一个下游节点的连接
+        :param conn:
+        :return:
+        '''
+        self.downstream.append(conn)
+
+    def append_upstream_connection(self, conn):
+        '''
+        添加一个到上游节点的连接
+        :param conn:
+        :return:
+        '''
+        self.upstream.append(conn)
+
+    def calc_output(self):
+        '''
+        计算节点的输出
+        :return:
+        '''
+        output = reduce(lambda ret, conn: ret + conn.upstream_node.output * conn.weight, self.upstream, 0)
+        self.output = output
+    
