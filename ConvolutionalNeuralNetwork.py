@@ -44,8 +44,80 @@ class ConvLayer(object):
         :param input_array:结果
         :return:
         '''
-        pass
+        self.input_array = input_array
+        self.padded_input_array = padding(input_array, self.zero_padding)
+        for f in range(self.filter_number):
+            filter = self.filters[f]
+            conv(self.padded_input_array, filter.get_weight(), self.output_array[f], self.stride, filter.get_bias())
+        element_wise_op(self.output_array, self.activator.forward)
 
+def padding(input_array, zp):
+    '''
+    为数组增加Zero padding，自动适配输入为2D和3D的情况
+    :param input_array:原始数据
+    :param zp:补零圈数
+    :return:
+    '''
+    if zp == 0:
+        return input_array
+    else:
+        if input_array.ndim == 3:
+            input_width = input_array.shape[2]
+            input_height = input_array.shape[1]
+            input_depth = input_array.shape[0]
+            padded_array = np.zeros((input_depth, input_height+2*zp, input_width+2*zp))
+            padded_array[:, zp: zp+input_height, zp: zp+input_width] = input_array
+            return padded_array
+        elif input_array.ndim == 2:
+            input_width = input_array.shape[1]
+            input_height = input_array.shape[0]
+            padded_array = np.zeros((input_height+2*zp, input_width+2*zp))
+            padded_array[zp: zp+input_height, zp: zp+input_width] = input_array
+            return padded_array
+
+def conv(input_array, kernel_array, output_array, stride, bias):
+    '''
+    计算卷积，自动适配输入为2D和3D的情况
+    :param input_array:输入数据
+    :param kernel_array:相当于filter
+    :param output_array:输出数据
+    :param stride:步长
+    :param bias:filter的bias
+    :return:
+    '''
+    channel_number = input_array.ndim
+    output_width = output_array.shape[1]
+    output_height = output_array.shape[0]
+    kernel_width = kernel_array.shape[-1]
+    kernel_height = kernel_array.shape[-2]
+    for i in range(output_height):
+        for j in range(output_width):
+            output_array[i][j] = (
+                get_patch(input_array, i, j, kernel_width, kernel_height, stride) * kernel_array
+            ).sum() + bias
+
+def get_patch(input_array, i, j, kernel_width, kernel_height, stride):
+    '''
+    计算卷积值
+    :param input_array:
+    :param i:
+    :param j:
+    :param kernel_width:
+    :param kernel_height:
+    :param stride:
+    :return:
+    '''
+    pass
+
+def element_wise_op(array, op):
+    '''
+    对numpy数组进行element wise操作
+    :param array:
+    :param op:
+    :return:
+    '''
+    for i in np.nditer(array, op_flags=['readwrite']):
+        i[...] = op(i)
 
 # 保存卷积层的参数以及梯度，并且实现用梯度下降法更新参数
 class Filter(object):
