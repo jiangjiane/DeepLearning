@@ -51,6 +51,53 @@ class ConvLayer(object):
             conv(self.padded_input_array, filter.get_weight(), self.output_array[f], self.stride, filter.get_bias())
         element_wise_op(self.output_array, self.activator.forward)
 
+    def bp_sensitivity_map(self, sensivity_array, activator):
+        '''
+        计算传递到上一层的sensitivity map
+        :param sensivity_array: 本层的sensitivity map
+        :param activator: 上一层的激活函数
+        :return:
+        '''
+        # 处理卷积步长，对原始sensitivity map进行扩展
+        expanded_array = self.expand_sensitivity_map(sensivity_array)
+        # full卷积，对sensitivity map进行zero padding
+        # 虽然原始输入的zero padding单元也会获得残差
+        # 但这个残差不需要继续向上传递，因此就不计算了
+        expanded_width = expanded_array.shape[2]
+        zp = (self.input_width + self.filter_width - 1 - expanded_width) / 2
+        padded_array = padding(expanded_array, zp)
+        # 初始化delta_array，用于保存传递到上一层的sensitivity map
+        self.delta_array = self.create_delta_array()
+        # 对于有多个filter的卷积层来说，最终传递到上一层的sensitivity map相当于所有filter的sensitivity map之和
+        for f in range(self.filter_number):
+            filter = self.filters[f]
+            # 将filter权重翻转180°
+            flipped_weights = np.array(map(lambda i: np.rot90(i, 2), filter.get_weights()))
+            # 计算与一个filter对应的delta_array
+            delta_array = self.create_delta_array()
+            for d in range(delta_array.shape[0]):
+                conv(padded_array[f], flipped_weights[d], delta_array[d], 1, 0)
+            self.delta_array += delta_array
+        # 将计算结果与激活函数的偏导数做element-wise乘法操作
+        derivative_array = np.array(self.input_array)
+        element_wise_op(derivative_array, activator.backward)
+        self.delta_array *= derivative_array
+
+    def expand_sensitivity_map(self, sensitivity_array):
+        '''
+
+        :param sensitivity_array:
+        :return:
+        '''
+        pass
+
+    def create_delta_array(self):
+        '''
+
+        :return:
+        '''
+        pass
+
 def padding(input_array, zp):
     '''
     为数组增加Zero padding，自动适配输入为2D和3D的情况
