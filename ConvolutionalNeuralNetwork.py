@@ -85,18 +85,54 @@ class ConvLayer(object):
 
     def expand_sensitivity_map(self, sensitivity_array):
         '''
-
+        将步长为S的sensitivity map还原为步长为1的sensitivity map
         :param sensitivity_array:
         :return:
         '''
-        pass
+        depth = sensitivity_array.shape[0]
+        # 确定扩展后sensitivity map的大小
+        # 计算stride为1时，sensitivity map的大小
+        expanded_width = (self.input_width - self.filter_width + 2 * self.zero_padding + 1)
+        expanded_height = (self.input_height - self.filter_height + 2 * self.zero_padding + 1)
+        # 构建新的sensitivity map
+        expand_array = np.zeros((depth, expanded_height, expanded_width))
+        # 从原始sensitivity map拷贝误差值
+        for i in range(self.output_height):
+            for j in range(self.output_width):
+                i_pos = i * self.stride
+                j_pos = j * self.stride
+                expand_array[:, i_pos, j_pos] = sensitivity_array[:, i, j]
+        return expand_array
 
     def create_delta_array(self):
         '''
-
+        创建用来保存传递到上一层的sensitivity map数组
         :return:
         '''
-        pass
+        return np.zeros((self.channel_number, self.input_height, self.filter_width))
+
+    def bp_gradient(self, sensitivity_array):
+        '''
+        处理卷积步长，对原始sensitivity map进行扩展
+        :param sensitivity_array:
+        :return:
+        '''
+        expanded_array = self.expand_sensitivity_map(sensitivity_array)
+        for f in range(self.filter_number):
+            # 计算每个权重的梯度
+            filter = self.filters[f]
+            for d in range(filter.weights.shape[0]):
+                conv(self.padded_input_array[d], expanded_array[f], filter.weights_grad[d], 1, 0)
+            # 计算偏置项的梯度
+            filter.bias_grad = expanded_array[f].sum()
+
+    def update(self):
+        '''
+        按照梯度下降法更新权重
+        :return:
+        '''
+        for filter in self.filters:
+            filter.update(self.learning_rate)
 
 def padding(input_array, zp):
     '''
@@ -195,3 +231,8 @@ class ReluActivator(object):
 
     def backward(self, output):  # 导数
         return 1 if output > 0 else 0
+
+
+# Max Pooling层的实现
+class MaxPoolingLayer(object):
+    pass
